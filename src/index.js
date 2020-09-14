@@ -1,9 +1,43 @@
+import "regenerator-runtime/runtime";
 import Peer from "peerjs";
+import fromEmitter from "@async-generators/from-emitter";
 
+let peer = new Peer();
+let id;
 let conn;
 
+peer.on("open", _id => {
+    id = _id;
+});
+
+peer.on("connection", _conn => {
+    conn = _conn;
+});
+
+function getId() {
+    return new Promise((resolve, _reject) => {
+        if (id) {
+            resolve(id);
+        }
+        peer.on("open", id => {
+            resolve(id);
+        });
+    });
+}
+
+function getConnection() {
+    return new Promise((resolve, _reject) => {
+        if (conn) {
+            resolve(conn);
+        }
+        peer.on("connection", conn => {
+            resolve(conn);
+        });
+    });
+}
+
 connect.onclick = () => {
-    conn = peer.connect(connectid.value);
+    let conn = peer.connect(connectid.value);
     conn.on("open", () => {
         conn.send("Opened!");
     });
@@ -12,17 +46,16 @@ connect.onclick = () => {
     };
 };
 
-let peer = new Peer();
-
-peer.on("open", id => {
-    myid.innerText = id;
-});
-
-peer.on("connection", conn => {
-    console.log("peer.on(connection)");
-    console.log(conn);
-    conn.on("data", data => {
-        console.log(data);
-        output.innerText = data;
+newgame.onclick = async () => {
+    myid.innerText = await getId();
+    let conn = await getConnection();
+    let dataSource = fromEmitter(conn, {
+        onNext: "data",
+        onDone: "close",
+        onError: "error"
     });
-});
+
+    for await (let data of dataSource) {
+        output.innerText = data;
+    }
+};
