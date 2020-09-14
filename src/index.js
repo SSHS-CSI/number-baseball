@@ -36,7 +36,7 @@ function getConnection() {
     });
 }
 
-connect.onclick = () => {
+connect.onclick = async () => {
     let conn = peer.connect(connectid.value);
     conn.on("open", () => {
         conn.send("Opened!");
@@ -44,11 +44,25 @@ connect.onclick = () => {
     send.onclick = () => {
         conn.send(input.value);
     };
+
+    let dataSource = fromEmitter(conn, {
+        onNext: "data",
+        onDone: "close",
+        onError: "error"
+    });
+
+    for await (let data of dataSource) {
+        output.innerText = data;
+    }
 };
 
 newgame.onclick = async () => {
     myid.innerText = await getId();
     let conn = await getConnection();
+    send.onclick = () => {
+        conn.send(input.value);
+    };
+
     let dataSource = fromEmitter(conn, {
         onNext: "data",
         onDone: "close",
